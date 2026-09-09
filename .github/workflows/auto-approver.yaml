@@ -1,0 +1,15 @@
+name: auto-approver
+run-name: CI for approving PRs
+
+on:
+  push:
+    branches:
+      - "renovate/**"
+      - "automated-update-charm-libs"
+
+jobs:
+  auto-approve:
+    name: Auto-approve and merge pull request
+    uses: canonical/identity-team/.github/workflows/pr-auto-approval.yaml@b5428d226e364de1c5ad601c1ec27c333f489d1d # v1.16.2
+    secrets:
+      PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
