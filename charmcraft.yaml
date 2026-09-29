@@ -22,7 +22,7 @@ resources:
   oci-image:
     type: oci-image
     description: OCI container image for Authorization Service workload
-    upstream-source: ghcr.io/canonical/authorization-service:v2.0.2
+    upstream-source: ghcr.io/canonical/authorization-service:v2.0.3
 
 requires:
   openfga:
@@ -31,6 +31,7 @@ requires:
   authorization-service-info:
     interface: authorization_service_info
     optional: false
+provides:
   metrics-endpoint:
     interface: prometheus_scrape
     optional: true
