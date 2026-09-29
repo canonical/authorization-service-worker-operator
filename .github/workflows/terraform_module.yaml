@@ -5,6 +5,10 @@
       paths:
         - 'terraform/**/*.tf'
 
+  permissions:
+    contents: write
+    pull-requests: write
+
   jobs:
     build:
       name: Terraform Checks and Plans
