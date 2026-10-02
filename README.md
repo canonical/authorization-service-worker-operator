@@ -18,19 +18,16 @@ juju deploy ./authorization-service-worker*.charm authorization-service-worker -
 
 ### Integrations
 
-The worker charm requires relations with PostgreSQL, OpenFGA, and the Authorization Service server charm:
+The worker charm requires relations with OpenFGA and the Authorization Service server charm:
 
 ```bash
-# Relate to PostgreSQL Database
-juju integrate authorization-service-worker:pg-database postgresql-k8s:database
-
 # Relate to OpenFGA
 juju integrate authorization-service-worker openfga-k8s:openfga
 
 # Relate to Authorization Service Server (for migration/version tracking)
 juju integrate authorization-service-worker authorization-service:authorization-service-info
 
-# Relate to COS Observability Stack
+# Optionally, relate to COS Observability Stack
 juju integrate authorization-service-worker prometheus-k8s:metrics-endpoint
 juju integrate authorization-service-worker grafana-k8s:grafana-dashboard
 ```
