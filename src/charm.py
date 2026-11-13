@@ -175,7 +175,6 @@ class AuthorizationServiceWorkerCharm(ops.CharmBase):
         """Render Pebble layer with updated command and env vars."""
         return self._pebble_service.render_pebble_layer(
             self._charm_config,
-            {"WORKER_ENABLED": "true"},
             self._database_config,
             self._openfga_config,
             command=self._worker_command,

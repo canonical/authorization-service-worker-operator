@@ -41,7 +41,6 @@ All environment variables passed to the `/usr/bin/app worker` workload container
 | :--- | :--- | :--- | :--- | :--- |
 | `LOG_LEVEL` | `CharmConfig` | Charm Config | Logging verbosity level | `"info"`, `"debug"` |
 | `DEV` | `CharmConfig` | Charm Config | Developer mode flag | `"false"`, `"true"` |
-| `WORKER_ENABLED` | `WorkerConfig` | Worker Config | Enable worker background processing | `"true"` |
 | `HTTP_PROXY` | `CharmConfig` | Proxy Config | Outbound HTTP proxy URL | `"http://proxy:3128"` / `None` |
 | `HTTPS_PROXY` | `CharmConfig` | Proxy Config | Outbound HTTPS proxy URL | `"http://proxy:3128"` / `None` |
 | `NO_PROXY` | `CharmConfig` | Proxy Config | Proxy exclusion list | `"localhost,127.0.0.1"` / `None` |
