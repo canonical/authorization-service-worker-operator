@@ -7,13 +7,6 @@ The worker operator SHALL define a Pebble layer service running the workload bin
 - **WHEN** Pebble container starts and layer is rendered
 - **THEN** the workload service command is set to `/usr/bin/app worker` with appropriate runtime flags
 
-### Requirement: Worker Workload Configuration
-The worker operator SHALL configure `WorkerConfig` to set `WORKER_ENABLED=true` in the Pebble layer workload environment.
-
-#### Scenario: Worker enabled configuration
-- **WHEN** Pebble layer is rendered for the worker container
-- **THEN** the workload environment contains `WORKER_ENABLED=true`
-
 ### Requirement: Juju Charm Configuration
 The worker operator SHALL define standard charm options in `charmcraft.yaml` including `log_level`, `http_proxy`, `https_proxy`, `no_proxy`, `cpu`, and `memory`.
 
