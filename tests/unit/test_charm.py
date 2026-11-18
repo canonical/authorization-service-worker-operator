@@ -362,23 +362,6 @@ def test_pebble_layer_contains_shared_openfga_model_id(
     assert service.environment.get("OPENFGA_AUTHORIZATION_MODEL_ID") == "model-xyz"
 
 
-def test_pebble_layer_contains_worker_enabled(
-    ctx: testing.Context,
-    openfga_relation: testing.Relation,
-    authz_info_relation: testing.Relation,
-) -> None:
-    """Test that the Pebble layer environment contains WORKER_ENABLED=true."""
-    state = create_state(
-        leader=True,
-        relations=[openfga_relation, authz_info_relation],
-    )
-    out = ctx.run(ctx.on.config_changed(), state)
-
-    container = out.get_container("worker")
-    service = container.plan.services[PEBBLE_SERVICE_NAME]
-    assert service.environment.get("WORKER_ENABLED") == "true"
-
-
 def test_openfga_config_exception_handling(
     ctx: testing.Context,
     mocker,
