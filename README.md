@@ -30,6 +30,8 @@ juju integrate authorization-service-worker authorization-service:authorization-
 # Optionally, relate to COS Observability Stack
 juju integrate authorization-service-worker prometheus-k8s:metrics-endpoint
 juju integrate authorization-service-worker grafana-k8s:grafana-dashboard
+juju integrate authorization-service-worker loki-k8s:logging
+juju integrate authorization-service-worker tempo-coordinator-k8s:tracing
 ```
 
 ### Server Migration Synchronization

@@ -57,6 +57,9 @@ All environment variables passed to the `/usr/bin/app worker` workload container
 | `METRICS_ENABLED` | `MetricsRelationHandler` | Observability | Enable Prometheus metrics export | `"true"` |
 | `METRICS_PORT` | `MetricsRelationHandler` | Observability | Metrics scraping port | `"9090"` / `"9100"` |
 | `METRICS_PATH` | `MetricsRelationHandler` | Observability | Metrics HTTP endpoint path | `"/metrics"` |
+| `TELEMETRY_ENABLED` | `TracingConfig` | Observability (`tracing`) | Enable OpenTelemetry tracing | `"false"`, `"true"` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `TracingConfig` | Observability (`tracing`) | OpenTelemetry collector endpoint | `"tempo:4317"` |
+| `OTEL_SERVICE_NAME` | `TracingConfig` | Observability (`tracing`) | OpenTelemetry service name | `"authorization-service-worker"` |
 
 ## Juju Status Mapping Matrix
 

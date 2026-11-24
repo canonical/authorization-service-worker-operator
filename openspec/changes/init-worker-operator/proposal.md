@@ -10,13 +10,13 @@ The Charmed Authorization Service architecture requires a dedicated worker opera
 - Implement workload version verification comparing worker's workload version against server info, setting `WaitingStatus("Waiting for the server to run migration")` on version mismatch or missing info relation data.
 - Observe `authorization_service_info_updated` event to automatically reconcile when database migrations are completed by the server charm.
 - Implement Kubernetes Resource Patching for `cpu` and `memory` limits using `KubernetesComputeResourcesPatch`.
-- Integrate the `authorization-service-operator-shared` library to handle common core configurations (`CharmConfig`), Pebble services, CLI commands, info sharing, exceptions, and relation integrations (`openfga`, `metrics-endpoint`, `grafana-dashboard`).
+- Integrate the `authorization-service-operator-shared` library to handle common core configurations (`CharmConfig`), Pebble services, CLI commands, info sharing, exceptions, and relation integrations (`openfga`, `metrics-endpoint`, `grafana-dashboard`, `tracing`).
 - Implement workload service management for running the `/usr/bin/app worker` command inside Pebble containers with Pebble service name `authorization-service` (overriding default OCI image definition) and stripping HTTP probes.
 - Implement leader unit side-service orchestration:
   - Leader unit runs the `worker` workload with reaper capabilities enabled (`/usr/bin/app worker`).
   - Non-leader units execute the worker command with the `--no-reaper` flag (`/usr/bin/app worker --no-reaper`).
   - On leader transition events, the demoted unit stops its reaper process and the newly elected leader starts the reaper process.
-- Wire relation handlers for OpenFGA (`openfga`), Authorization Service Info (`authorization-service-info`), and COS Observability (Metrics & Dashboards).
+- Wire relation handlers for OpenFGA (`openfga`), Authorization Service Info (`authorization-service-info`), and COS Observability (Metrics, Dashboards, Logging, and Tracing via `otlp_grpc`).
 - Enforce explicit charm statuses:
   - `BlockedStatus("Missing required relation: authorization-service-info")` when authorization-service-info relation is missing.
   - `BlockedStatus("Missing required relation: openfga")` when OpenFGA relation is missing.
@@ -28,7 +28,7 @@ The Charmed Authorization Service architecture requires a dedicated worker opera
 
 ### New Capabilities
 - `worker-charm-architecture`: Defines worker charm orchestration, Pebble container layer definitions, Juju charm configs (`log_level`, proxy settings, resource limits), Kubernetes Resource Patching, leader transition reaper handling, `uv` packaging configuration, unit status reporting, and server migration version check handling.
-- `worker-integrations`: Connects worker charm with required relations (PostgreSQL `pg-database`, OpenFGA, Authorization Service Info, Metrics, Grafana Dashboards) using shared library handlers.
+- `worker-integrations`: Connects worker charm with required and optional relations (OpenFGA, Authorization Service Info, Metrics, Grafana Dashboards, Logging, and OTLP gRPC Tracing) using shared library and COS handlers.
 
 ### Modified Capabilities
 <!-- None -->
