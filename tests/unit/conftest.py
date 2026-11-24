@@ -17,6 +17,7 @@ from constants import (
     AUTHORIZATION_SERVICE_INFO_INTEGRATION_NAME,
     CONTAINER_NAME,
     OPENFGA_INTEGRATION_NAME,
+    TRACING_INTEGRATION_NAME,
 )
 
 APP_NAME = "authorization-service-worker"
@@ -50,6 +51,15 @@ def mocked_k8s_resource_patch(mocker: MockerFixture) -> None:
         _patch=lambda *a, **kw: None,
         is_ready=lambda *a, **kw: True,
         get_status=lambda *a, **kw: ActiveStatus(),
+    )
+
+
+@pytest.fixture(autouse=True)
+def mocked_log_forwarder(mocker: MockerFixture) -> None:
+    """Prevent LogForwarder from checking Juju version."""
+    mocker.patch(
+        "charms.loki_k8s.v1.loki_push_api._PebbleLogClient.check_juju_version",
+        return_value=None,
     )
 
 
@@ -141,6 +151,19 @@ def authz_info_relation() -> testing.Relation:
             "db_name": "authorization_service",
             "db_user": "authz_user",
             "db_secret_id": "secret:123",
+        },
+    )
+
+
+@pytest.fixture
+def tracing_relation() -> testing.Relation:
+    """Provide a matching tracing relation."""
+    return testing.Relation(
+        endpoint=TRACING_INTEGRATION_NAME,
+        interface="tracing",
+        remote_app_name="tempo-coordinator-k8s",
+        remote_app_data={
+            "receivers": '[{"protocol": {"name": "otlp_grpc", "type": "grpc"}, "url": "tempo:4317"}]'
         },
     )
 
