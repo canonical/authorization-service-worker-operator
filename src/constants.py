@@ -4,8 +4,11 @@
 """Constants for the Authorization Service Worker Operator."""
 
 CONTAINER_NAME = "worker"
+OTEL_SERVICE_NAME = "authorization-service-worker"
 
 OPENFGA_INTEGRATION_NAME = "openfga"
 AUTHORIZATION_SERVICE_INFO_INTEGRATION_NAME = "authorization-service-info"
 METRICS_INTEGRATION_NAME = "metrics-endpoint"
 GRAFANA_INTEGRATION_NAME = "grafana-dashboard"
+LOGGING_INTEGRATION_NAME = "logging"
+TRACING_INTEGRATION_NAME = "tracing"

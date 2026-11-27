@@ -18,6 +18,8 @@ output "requires" {
   description = "Map of requires endpoint names"
   value = {
     authorization-service-info = "authorization-service-info"
+    logging                    = "logging"
     openfga                    = "openfga"
+    tracing                    = "tracing"
   }
 }

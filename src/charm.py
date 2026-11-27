@@ -16,6 +16,7 @@ from authorization_service_operator_shared.info import AuthorizationServiceInfoR
 from authorization_service_operator_shared.observability import (
     GrafanaDashboardHandler,
     MetricsRelationHandler,
+    TracingConfig,
 )
 from authorization_service_operator_shared.openfga import (
     OpenFGAConfig,
@@ -23,6 +24,7 @@ from authorization_service_operator_shared.openfga import (
 )
 from authorization_service_operator_shared.services import PebbleService, WorkloadService
 from authorization_service_operator_shared.utils import container_connectivity
+from charms.loki_k8s.v1.loki_push_api import LogForwarder
 from charms.observability_libs.v0.kubernetes_compute_resources_patch import (
     KubernetesComputeResourcesPatch,
     ResourceRequirements,
@@ -32,13 +34,20 @@ from charms.openfga_k8s.v1.openfga import (
     OpenFGARequires,
     OpenFGAStoreRemovedEvent,
 )
+from charms.tempo_coordinator_k8s.v0.tracing import (
+    ProtocolNotRequestedError,
+    TracingEndpointRequirer,
+)
 
 from constants import (
     AUTHORIZATION_SERVICE_INFO_INTEGRATION_NAME,
     CONTAINER_NAME,
     GRAFANA_INTEGRATION_NAME,
+    LOGGING_INTEGRATION_NAME,
     METRICS_INTEGRATION_NAME,
     OPENFGA_INTEGRATION_NAME,
+    OTEL_SERVICE_NAME,
+    TRACING_INTEGRATION_NAME,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,6 +102,10 @@ class AuthorizationServiceWorkerCharm(ops.CharmBase):
             self,
             relation_name=GRAFANA_INTEGRATION_NAME,
         )
+        self._tracing = TracingEndpointRequirer(
+            self, relation_name=TRACING_INTEGRATION_NAME, protocols=["otlp_grpc"]
+        )
+        self._logging = LogForwarder(self, relation_name=LOGGING_INTEGRATION_NAME)
 
         # Register event observers
         self.framework.observe(self.on.collect_unit_status, self._on_collect_status)
@@ -114,6 +127,14 @@ class AuthorizationServiceWorkerCharm(ops.CharmBase):
         )
         self.framework.observe(
             self.authz_info.on.authorization_service_info_broken,
+            self._on_holistic_handler,
+        )
+        self.framework.observe(
+            self._tracing.on.endpoint_changed,
+            self._on_holistic_handler,
+        )
+        self.framework.observe(
+            self._tracing.on.endpoint_removed,
             self._on_holistic_handler,
         )
 
@@ -171,12 +192,26 @@ class AuthorizationServiceWorkerCharm(ops.CharmBase):
         return cfg.is_ready and bool(cfg.authorization_model_id)
 
     @property
+    def _tracing_config(self) -> TracingConfig:
+        """Return tracing configuration, guarding against non-leader databag access errors."""
+        try:
+            return TracingConfig.load(self._tracing, service_name=OTEL_SERVICE_NAME)
+        except (ProtocolNotRequestedError, ops.RelationDataAccessError, ops.ModelError) as exc:
+            logger.debug("Tracing endpoint not yet available: %s", exc)
+            return TracingConfig(service_name=OTEL_SERVICE_NAME)
+
+    @property
     def _pebble_layer(self) -> ops.pebble.Layer:
         """Render Pebble layer with updated command and env vars."""
         return self._pebble_service.render_pebble_layer(
             self._charm_config,
+            # Set OTEL_SERVICE_NAME explicitly so it is used as the logger service field
+            # even when tracing is disabled and TracingConfig.to_env_vars() returns {}.
+            {"OTEL_SERVICE_NAME": OTEL_SERVICE_NAME},
             self._database_config,
             self._openfga_config,
+            self.metrics_handler,
+            self._tracing_config,
             command=self._worker_command,
             include_checks=False,
         )

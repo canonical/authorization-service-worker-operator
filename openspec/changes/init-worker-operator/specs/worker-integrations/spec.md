@@ -50,9 +50,21 @@ The worker operator SHALL integrate with OpenFGA relation using `OpenFGARelation
 - **THEN** worker workload environment is populated with OpenFGA connection variables and `OPENFGA_AUTHORIZATION_MODEL_ID`
 
 ### Requirement: COS Observability Integration
-The worker operator SHALL integrate with Prometheus metrics scrape target and Grafana dashboard registration using `MetricsRelationHandler` and `GrafanaDashboardHandler` from `authorization-service-operator-shared`.
+The worker operator SHALL integrate with Prometheus metrics scrape target, Grafana dashboard registration, Loki log forwarding, and Tempo OpenTelemetry tracing using `MetricsRelationHandler`, `GrafanaDashboardHandler`, `TracingConfig` from `authorization-service-operator-shared`, `LogForwarder` from `charms.loki_k8s.v1.loki_push_api`, and `TracingEndpointRequirer` from `charms.tempo_coordinator_k8s.v0.tracing`. Metrics environment variables (`METRICS_ENABLED`, `METRICS_PORT`, `METRICS_PATH`) and `OTEL_SERVICE_NAME="authorization-service-worker"` SHALL be injected into the workload environment unconditionally.
 
 #### Scenario: Metrics relation connected
 - **WHEN** `metrics-endpoint` relation is established
-- **THEN** Prometheus scrape endpoint is published and metrics environment variables are passed to the workload
+- **THEN** Prometheus scrape endpoint and alert rules from `src/prometheus_alert_rules/` are published to the relation databag
+
+#### Scenario: Tracing relation connected
+- **WHEN** `tracing` relation is established and an `otlp_grpc` endpoint is ready
+- **THEN** `TELEMETRY_ENABLED="true"`, `OTEL_EXPORTER_OTLP_ENDPOINT`, and `OTEL_SERVICE_NAME="authorization-service-worker"` environment variables are passed to the workload
+
+#### Scenario: Tracing relation absent or removed
+- **WHEN** `tracing` relation is absent, not yet ready, or broken
+- **THEN** `TELEMETRY_ENABLED="false"` and `OTEL_SERVICE_NAME="authorization-service-worker"` are set in the workload environment, and `OTEL_EXPORTER_OTLP_ENDPOINT` is omitted
+
+#### Scenario: Logging relation connected
+- **WHEN** `logging` relation is established
+- **THEN** Pebble log forwarding and Loki alert rules from `src/loki_alert_rules/` are configured via `LogForwarder`
 

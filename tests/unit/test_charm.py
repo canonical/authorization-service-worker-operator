@@ -4,6 +4,7 @@
 """Unit tests for Authorization Service Worker Operator."""
 
 import dataclasses
+import json
 
 from authorization_service_operator_shared.constants import PEBBLE_SERVICE_NAME
 from authorization_service_operator_shared.exceptions import WorkloadError
@@ -381,3 +382,135 @@ def test_openfga_config_exception_handling(
     out = ctx.run(ctx.on.collect_unit_status(), state)
 
     assert out.unit_status == WaitingStatus("OpenFGA relation is not ready yet")
+
+
+def test_pebble_layer_metrics_and_default_telemetry_env_vars(
+    ctx: testing.Context,
+    openfga_relation: testing.Relation,
+    authz_info_relation: testing.Relation,
+) -> None:
+    """Test that Pebble layer includes metrics env vars and default telemetry settings."""
+    state = create_state(
+        leader=True,
+        relations=[openfga_relation, authz_info_relation],
+    )
+    out = ctx.run(ctx.on.config_changed(), state)
+
+    container = out.get_container("worker")
+    env = container.plan.services[PEBBLE_SERVICE_NAME].environment
+    assert env["METRICS_ENABLED"] == "true"
+    assert env["METRICS_PORT"] == "9100"
+    assert env["METRICS_PATH"] == "/metrics"
+    assert env["TELEMETRY_ENABLED"] == "false"
+    assert env["OTEL_SERVICE_NAME"] == "authorization-service-worker"
+
+
+def test_tracing_relation_enables_telemetry(
+    ctx: testing.Context,
+    openfga_relation: testing.Relation,
+    authz_info_relation: testing.Relation,
+    tracing_relation: testing.Relation,
+) -> None:
+    """Test joining the tracing relation enables telemetry and sets OTLP endpoint."""
+    state = create_state(
+        leader=True,
+        relations=[openfga_relation, authz_info_relation, tracing_relation],
+    )
+    out = ctx.run(ctx.on.relation_changed(tracing_relation), state)
+
+    container = out.get_container("worker")
+    env = container.plan.services[PEBBLE_SERVICE_NAME].environment
+    assert env["TELEMETRY_ENABLED"] == "true"
+    assert env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "tempo:4317"
+    assert env["OTEL_SERVICE_NAME"] == "authorization-service-worker"
+
+    broken_out = ctx.run(ctx.on.relation_broken(out.get_relation(tracing_relation.id)), out)
+    broken_env = broken_out.get_container("worker").plan.services[PEBBLE_SERVICE_NAME].environment
+    assert broken_env["TELEMETRY_ENABLED"] == "false"
+    assert broken_env["OTEL_SERVICE_NAME"] == "authorization-service-worker"
+    assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in broken_env
+
+
+def test_tracing_relation_missing_protocol_on_non_leader(
+    ctx: testing.Context,
+    openfga_relation: testing.Relation,
+    authz_info_relation: testing.Relation,
+) -> None:
+    """Test non-leader unit handles tracing relation without requested protocol gracefully."""
+    empty_tracing_relation = testing.Relation(
+        endpoint="tracing",
+        interface="tracing",
+        remote_app_name="tempo-coordinator-k8s",
+        remote_app_data={"receivers": "[]"},
+    )
+    state = create_state(
+        leader=False,
+        relations=[openfga_relation, authz_info_relation, empty_tracing_relation],
+    )
+    out = ctx.run(ctx.on.relation_changed(empty_tracing_relation), state)
+
+    container = out.get_container("worker")
+    env = container.plan.services[PEBBLE_SERVICE_NAME].environment
+    assert env["TELEMETRY_ENABLED"] == "false"
+    assert env["OTEL_SERVICE_NAME"] == "authorization-service-worker"
+    assert "OTEL_EXPORTER_OTLP_ENDPOINT" not in env
+
+
+def test_metrics_endpoint_relation_publishes_scrape_jobs_and_alerts(
+    ctx: testing.Context,
+    openfga_relation: testing.Relation,
+    authz_info_relation: testing.Relation,
+) -> None:
+    """Test that metrics-endpoint relation publishes scrape jobs and alert rules."""
+    metrics_relation = testing.Relation(
+        endpoint="metrics-endpoint",
+        interface="prometheus_scrape",
+        remote_app_name="prometheus-k8s",
+    )
+    state = create_state(
+        leader=True,
+        relations=[openfga_relation, authz_info_relation, metrics_relation],
+    )
+    out = ctx.run(ctx.on.relation_joined(metrics_relation), state)
+
+    rel_out = out.get_relation(metrics_relation.id)
+    scrape_jobs = json.loads(rel_out.local_app_data["scrape_jobs"])
+    assert scrape_jobs == [
+        {"metrics_path": "/metrics", "static_configs": [{"targets": ["*:9100"]}]}
+    ]
+    alert_rules = json.loads(rel_out.local_app_data["alert_rules"])
+    alert_names = {
+        rule["alert"] for group in alert_rules.get("groups", []) for rule in group.get("rules", [])
+    }
+    assert "AuthorizationServiceWorkerUnavailable-multiple" in alert_names
+    assert "AuthorizationServiceWorkerUnavailable-all" in alert_names
+
+
+def test_logging_relation_configures_log_forwarding(
+    ctx: testing.Context,
+    openfga_relation: testing.Relation,
+    authz_info_relation: testing.Relation,
+) -> None:
+    """Test that logging relation configures Pebble log forwarding and alert rules."""
+    logging_relation = testing.Relation(
+        endpoint="logging",
+        interface="loki_push_api",
+        remote_app_name="loki-k8s",
+        remote_units_data={
+            0: {"endpoint": '{"url": "http://loki:3100/loki/api/v1/push"}'},
+        },
+    )
+    state = create_state(
+        leader=True,
+        relations=[openfga_relation, authz_info_relation, logging_relation],
+    )
+    out = ctx.run(ctx.on.relation_changed(logging_relation), state)
+
+    container = out.get_container("worker")
+    assert "worker-log-forwarding" in container.layers
+    rel_out = out.get_relation(logging_relation.id)
+    alert_rules = json.loads(rel_out.local_app_data["alert_rules"])
+    alert_names = {
+        rule["alert"] for group in alert_rules.get("groups", []) for rule in group.get("rules", [])
+    }
+    assert "HighFrequencyHighSeverityLog" in alert_names

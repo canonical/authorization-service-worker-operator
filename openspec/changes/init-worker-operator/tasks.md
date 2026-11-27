@@ -6,7 +6,7 @@
 
 ## 2. Core Worker Charm Implementation
 
-- [x] 2.1 Implement `src/charm.py` initializing charm hooks and consuming shared relation handlers (`OpenFGARelationHandler`, `AuthorizationServiceInfoRequirer`, `MetricsRelationHandler`, `GrafanaDashboardHandler`).
+- [x] 2.1 Implement `src/charm.py` initializing charm hooks and consuming shared relation handlers (`OpenFGARelationHandler`, `AuthorizationServiceInfoRequirer`, `MetricsRelationHandler`, `GrafanaDashboardHandler`, `TracingConfig`, `LogForwarder`, `TracingEndpointRequirer` with `otlp_grpc`).
 - [x] 2.2 Configure `KubernetesComputeResourcesPatch` using `cpu` and `memory` charm options to patch workload container specs.
 - [x] 2.3 Implement Pebble container layer setup running `/usr/bin/app worker`, dynamically injecting `--no-reaper` flag on non-leader units and omitting it on the leader unit.
 - [x] 2.4 Implement `AuthorizationServiceInfoRequirer` version checking and observer for `authorization_service_info_updated` events.

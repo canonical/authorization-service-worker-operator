@@ -31,6 +31,13 @@ requires:
   authorization-service-info:
     interface: authorization_service_info
     optional: false
+  logging:
+    interface: loki_push_api
+    optional: true
+  tracing:
+    interface: tracing
+    limit: 1
+    optional: true
 provides:
   metrics-endpoint:
     interface: prometheus_scrape
